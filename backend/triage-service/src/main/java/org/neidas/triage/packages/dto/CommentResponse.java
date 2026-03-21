@@ -12,4 +12,5 @@ public class CommentResponse {
     private Long id;
     private String text;
     private LocalDateTime createdDate;
+    private Boolean isTicketCreated;
 }

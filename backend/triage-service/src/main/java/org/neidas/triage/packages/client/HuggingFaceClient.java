@@ -18,8 +18,7 @@ public class HuggingFaceClient {
     @Value("${huggingface.model}")
     private String model;
 
-    private static final String MODEL_URL =
-            "https://router.huggingface.co/v1/chat/completions";
+    private static final String MODEL_URL = "https://router.huggingface.co/v1/chat/completions";
 
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -29,21 +28,13 @@ public class HuggingFaceClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
 
-        Map<String, Object> body = Map.of(
-                "model", model,
-                "messages", List.of(
-                        Map.of("role", "user", "content", prompt)
-                ),
-                "max_tokens", 200
-        );
+        Map<String, Object> body = Map.of("model", model, "messages", List.of(Map.of("role", "user", "content", prompt)), "max_tokens", 200);
 
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
 
         try {
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    MODEL_URL, HttpMethod.POST, request, Map.class
-            );
+            ResponseEntity<Map> response = restTemplate.exchange(MODEL_URL, HttpMethod.POST, request, Map.class);
 
             System.out.println("HuggingFace raw response: " + response.getBody());
 

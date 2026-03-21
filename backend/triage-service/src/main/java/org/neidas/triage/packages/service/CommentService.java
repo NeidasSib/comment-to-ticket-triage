@@ -24,13 +24,17 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
 
-        Ticket ticket= triageService.triage(saved.getId(), saved.getText());
-
+        Ticket ticket = triageService.triage(saved.getId(), saved.getText());
+        if (ticket != null) {
+            saved.setIsTicketCreated(true);
+            commentRepository.save(saved);
+        }
 
         return new CommentResponse(
                 saved.getId(),
                 saved.getText(),
-                saved.getCreatedAt()
+                saved.getCreatedAt(),
+                saved.getIsTicketCreated()
         );
     }
 
@@ -39,7 +43,8 @@ public class CommentService {
                 .map(c -> new CommentResponse(
                         c.getId(),
                         c.getText(),
-                        c.getCreatedAt()
+                        c.getCreatedAt(),
+                        c.getIsTicketCreated()
                 ));
     }
 }
