@@ -4,20 +4,18 @@ import lombok.RequiredArgsConstructor;
 import org.neidas.triage.packages.dto.CommentRequest;
 import org.neidas.triage.packages.dto.CommentResponse;
 import org.neidas.triage.packages.model.Comment;
+import org.neidas.triage.packages.model.Ticket;
 import org.neidas.triage.packages.repository.CommentRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-
-import static java.util.Arrays.stream;
 
 @Service
 @RequiredArgsConstructor
 public class CommentService {
 
     private final CommentRepository commentRepository;
+    private final TriageService triageService;
 
 
     public CommentResponse saveComment(CommentRequest request) {
@@ -26,10 +24,17 @@ public class CommentService {
 
         Comment saved = commentRepository.save(comment);
 
+        Ticket ticket = triageService.triage(saved.getId(), saved.getText());
+        if (ticket != null) {
+            saved.setIsTicketCreated(true);
+            commentRepository.save(saved);
+        }
+
         return new CommentResponse(
                 saved.getId(),
                 saved.getText(),
-                saved.getCreatedAt()
+                saved.getCreatedAt(),
+                saved.getIsTicketCreated()
         );
     }
 
@@ -38,7 +43,8 @@ public class CommentService {
                 .map(c -> new CommentResponse(
                         c.getId(),
                         c.getText(),
-                        c.getCreatedAt()
+                        c.getCreatedAt(),
+                        c.getIsTicketCreated()
                 ));
     }
 }

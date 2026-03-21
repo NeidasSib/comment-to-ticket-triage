@@ -1,0 +1,16 @@
+# For: docker build -f docker/Dockerfile .
+.git
+**/.git
+
+frontend/node_modules
+frontend/.next
+frontend/out
+
+**/.gradle
+backend/triage-service/build
+backend/triage-service/out
+backend/triage-service/bin
+
+.idea
+**/*.iml
+.vscode
