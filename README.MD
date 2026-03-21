@@ -45,7 +45,7 @@ Example response (shape is stable; IDs and timestamps depend on your run):
 {
   "id": 1,
   "text": "The checkout page throws a 500 after I enter my card.",
-  "createdDate": "2025-03-21T22:15:03.123456",
+  "createdDate": "2026-03-21T22:12:03.123456",
   "isTicketCreated": true
 }
 ```
@@ -66,19 +66,11 @@ Example (truncated page wrapper—your `pageable` block will have more fields):
     {
       "id": 1,
       "text": "The checkout page throws a 500 after I enter my card.",
-      "createdDate": "2025-03-21T22:15:03.123456",
+      "createdDate": "2026-03-20T22:15:03.123456",
       "isTicketCreated": true
     }
   ],
-  "pageable": { "pageNumber": 0, "pageSize": 10 },
-  "totalElements": 1,
-  "totalPages": 1,
-  "last": true,
-  "first": true,
-  "number": 0,
-  "size": 10,
-  "numberOfElements": 1,
-  "empty": false
+  "page": { "size": 10, "number": 0, "totalElements": 1, "totalPages": 1 }
 }
 ```
 
@@ -100,13 +92,10 @@ Example page entry:
       "priority": "HIGH",
       "summary": "User reports server error during payment step after submitting card details.",
       "commentId": 1,
-      "createdAt": "2025-03-21T22:15:08.456789"
+      "createdAt": "2026-03-21T22:15:08.456789"
     }
   ],
-  "totalElements": 1,
-  "totalPages": 1,
-  "number": 0,
-  "size": 10
+  "page": { "size": 10, "number": 0, "totalElements": 1, "totalPages": 1 }
 }
 ```
 
@@ -122,13 +111,13 @@ Example:
 
 ```json
 {
-  "id": 1,
-  "title": "Checkout returns HTTP 500 after card entry",
-  "category": "BUG",
-  "priority": "HIGH",
-  "summary": "User reports server error during payment step after submitting card details.",
-  "commentId": 1,
-  "createdAt": "2025-03-21T22:15:08.456789"
+    "id": 1,
+    "title": "Application Error After Update",
+    "category": "BUG",
+    "priority": "HIGH",
+    "summary": "The application is stuttering after recent update.",
+    "commentId": 2,
+    "createdAt": "2026-03-21T14:57:35.931828"
 }
 ```
 
@@ -140,17 +129,15 @@ With the default config it’s on at `http://localhost:8080/h2-console`. Use JDB
 
 ## Why Llama and not flan-t5-base?
 
-The client hits Hugging Face’s **chat completions** route (`/v1/chat/completions` on the router). That API expects a chat-style payload (messages with roles). Flan-T5 isn’t wired through that path the same way; Llama 3.1 Instruct is. Swapping models is mostly a config change if the replacement speaks the same chat schema.
+The client hits Hugging Face’s **chat completions** route (`/v1/chat/completions` on the router). That API expects a chat-style payload (messages with roles). Flan-T5 isn’t wired through that path the same way. Llama 3.1 Instruct is. Swapping models is mostly a config change if the replacement speaks the same chat schema.
 
 ## Layout
 
 ```
 .
-├── backend/triage-service/    # Spring Boot app (Gradle, src, API)
-├── docker/                    # Dockerfile; build context = repo root
-├── frontend/                  # Next.js dashboard (optional)
+├── backend/triage-service/    # Spring Boot app
+├── docker/                    # Dockerfile
+├── frontend/                  # Next.js dashboard
 ├── .dockerignore
 └── README.md
 ```
-
-That’s the gist.
