@@ -28,7 +28,7 @@ public class HuggingFaceClient {
         headers.setContentType(MediaType.APPLICATION_JSON);
         headers.setBearerAuth(apiKey);
 
-        Map<String, Object> body = Map.of("model", model, "messages", List.of(Map.of("role", "user", "content", prompt)), "max_tokens", 200);
+        Map<String, Object> body = Map.of("model", model, "messages", List.of(Map.of("role", "user", "content", prompt)), "max_tokens", 300);
 
 
         HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
@@ -36,6 +36,7 @@ public class HuggingFaceClient {
         try {
             ResponseEntity<Map> response = restTemplate.exchange(MODEL_URL, HttpMethod.POST, request, Map.class);
 
+            //Remove later
             System.out.println("HuggingFace raw response: " + response.getBody());
 
             Map<String, Object> result = response.getBody();

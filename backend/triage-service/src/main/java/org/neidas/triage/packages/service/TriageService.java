@@ -2,6 +2,8 @@ package org.neidas.triage.packages.service;
 
 import lombok.RequiredArgsConstructor;
 import org.neidas.triage.packages.client.HuggingFaceClient;
+import org.neidas.triage.packages.model.Category;
+import org.neidas.triage.packages.model.Priority;
 import org.neidas.triage.packages.model.Ticket;
 import org.neidas.triage.packages.repository.TicketRepository;
 import org.springframework.stereotype.Service;
@@ -50,6 +52,7 @@ public class TriageService {
                 """.formatted(commentText);
         String triageResult = huggingFaceClient.query(triagePrompt);
 
+        //Remove later
         System.out.println("Triage result: " + triageResult);
 
         if (triageResult == null || !triageResult.toUpperCase().contains("TICKET") || triageResult.toUpperCase().contains("NO_TICKET")) {
@@ -96,22 +99,27 @@ public class TriageService {
         ticket.setCommentId(commentId);
 
         for (String line : detailResult.split("\n")) {
-            if (line.startsWith("TITLE:")) {
-                ticket.setTitle(line.replace("TITLE:", "").trim());
-            } else if (line.startsWith("CATEGORY:")) {
-                ticket.setCategory(line.replace("CATEGORY:", "").trim());
-            } else if (line.startsWith("PRIORITY:")) {
-                ticket.setPriority(line.replace("PRIORITY:", "").trim());
-            } else if (line.startsWith("SUMMARY:")) {
-                ticket.setSummary(line.replace("SUMMARY:", "").trim());
+            String trimmed = line.trim();
+            if (trimmed.startsWith("TITLE:")) {
+                ticket.setTitle(extractValue(trimmed, "TITLE:"));
+            } else if (trimmed.startsWith("CATEGORY:")) {
+                ticket.setCategory(Category.fromString(extractValue(trimmed, "CATEGORY:")));
+            } else if (trimmed.startsWith("PRIORITY:")) {
+                ticket.setPriority(Priority.fromString(extractValue(trimmed, "PRIORITY:")));
+            } else if (trimmed.startsWith("SUMMARY:")) {
+                ticket.setSummary(extractValue(trimmed, "SUMMARY:"));
             }
         }
 
         if (ticket.getTitle() == null) ticket.setTitle("Untitled");
-        if (ticket.getCategory() == null) ticket.setCategory("other");
-        if (ticket.getPriority() == null) ticket.setPriority("medium");
+        if (ticket.getCategory() == null) ticket.setCategory(Category.OTHER);
+        if (ticket.getPriority() == null) ticket.setPriority(Priority.MEDIUM);
         if (ticket.getSummary() == null) ticket.setSummary(detailResult.trim());
 
         return ticketRepository.save(ticket);
+    }
+
+    private String extractValue(String line, String prefix) {
+        return line.substring(prefix.length()).trim();
     }
 }

@@ -20,8 +20,12 @@ public class Ticket {
     private Long id;
 
     private String title;
-    private String category;
-    private String priority;
+
+    @Enumerated(EnumType.STRING)
+    private Category category;
+
+    @Enumerated(EnumType.STRING)
+    private Priority priority;
 
     @Column (columnDefinition = "TEXT")
     private String summary;

@@ -3,6 +3,8 @@ package org.neidas.triage.packages.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.neidas.triage.packages.model.Category;
+import org.neidas.triage.packages.model.Priority;
 
 import java.time.LocalDateTime;
 
@@ -11,8 +13,8 @@ import java.time.LocalDateTime;
 public class TicketResponse {
     private Long id;
     private String title;
-    private String category;
-    private String priority;
+    private Category category;
+    private Priority priority;
     private String summary;
 
     private Long commentId;
