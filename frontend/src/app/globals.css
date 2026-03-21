@@ -139,3 +139,16 @@
     }
   }
 }
+
+@keyframes refresh-icon-spin-once {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-refresh-icon-once {
+  animation: refresh-icon-spin-once 0.65s ease-in-out 1;
+}

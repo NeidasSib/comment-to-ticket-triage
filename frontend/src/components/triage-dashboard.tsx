@@ -7,6 +7,7 @@ import {
   ChevronRight,
   MessageSquarePlus,
   RefreshCw,
+  Sparkles,
   Ticket,
 } from "lucide-react";
 
@@ -34,6 +35,7 @@ import {
   type UiComment,
   type UiTicket,
 } from "@/lib/triage-api";
+import { cn } from "@/lib/utils";
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);
@@ -42,6 +44,46 @@ function formatWhen(iso: string): string {
     dateStyle: "medium",
     timeStyle: "short",
   });
+}
+
+type PriorityLevel = "high" | "medium" | "low" | "unknown";
+
+function priorityLevel(priority: string | undefined): PriorityLevel {
+  const p = priority?.trim().toLowerCase() ?? "";
+  if (p === "high" || p === "medium" || p === "low") return p;
+  return "unknown";
+}
+
+function formatPriorityLabel(priority: string): string {
+  const raw = priority.trim();
+  if (!raw) return priority;
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+}
+
+function priorityBadgeClass(priority: string | undefined): string {
+  switch (priorityLevel(priority)) {
+    case "high":
+      return "border-destructive/55 bg-destructive/12 text-destructive dark:bg-destructive/20";
+    case "medium":
+      return "border-amber-500/55 bg-amber-500/12 text-amber-950 dark:border-amber-400/45 dark:bg-amber-400/12 dark:text-amber-50";
+    case "low":
+      return "border-emerald-600/45 bg-emerald-500/10 text-emerald-950 dark:border-emerald-400/40 dark:bg-emerald-400/10 dark:text-emerald-50";
+    default:
+      return "border-border text-muted-foreground";
+  }
+}
+
+function priorityCardAccentClass(priority: string | undefined): string {
+  switch (priorityLevel(priority)) {
+    case "high":
+      return "border-l-[3px] border-l-destructive";
+    case "medium":
+      return "border-l-[3px] border-l-amber-500";
+    case "low":
+      return "border-l-[3px] border-l-emerald-500";
+    default:
+      return "";
+  }
 }
 
 function apiMessage(e: unknown, fallback: string): string {
@@ -107,6 +149,7 @@ export function TriageDashboard() {
   const [listError, setListError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [refreshIconKey, setRefreshIconKey] = useState(0);
 
   const loadComments = useCallback(async (page: number) => {
     setLoadingComments(true);
@@ -135,6 +178,11 @@ export function TriageDashboard() {
   const refreshFromStart = useCallback(async () => {
     await Promise.all([loadComments(0), loadTickets(0)]);
   }, [loadComments, loadTickets]);
+
+  const handleRefreshClick = useCallback(() => {
+    setRefreshIconKey((k) => k + 1);
+    void refreshFromStart();
+  }, [refreshFromStart]);
 
   useEffect(() => {
     void refreshFromStart();
@@ -231,15 +279,15 @@ export function TriageDashboard() {
             type="button"
             variant="outline"
             size="sm"
-            onClick={() => void refreshFromStart()}
+            onClick={handleRefreshClick}
             disabled={loadingComments || loadingTickets}
           >
             <RefreshCw
-              className={
-                loadingComments || loadingTickets
-                  ? "size-3.5 animate-spin"
-                  : "size-3.5"
-              }
+              key={refreshIconKey}
+              className={cn(
+                "size-3.5",
+                refreshIconKey > 0 && "animate-refresh-icon-once",
+              )}
               aria-hidden
             />
             Refresh
@@ -265,7 +313,21 @@ export function TriageDashboard() {
               <li key={c.id}>
                 <Card size="sm" className="py-3">
                   <CardHeader className="px-3 pb-0">
-                    <CardTitle className="text-sm">Comment #{c.id}</CardTitle>
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <CardTitle className="text-sm">Comment #{c.id}</CardTitle>
+                      {c.ticketCreated ? (
+                        <span
+                          className="inline-flex shrink-0 items-center justify-center rounded-full p-0.5"
+                          title="Ticket generated from this comment"
+                          aria-label="Ticket generated from this comment"
+                        >
+                          <Sparkles
+                            className="size-4 text-amber-400 [filter:drop-shadow(0_0_4px_rgb(250,204,21))_drop-shadow(0_0_12px_rgba(250,204,21,0.9))_drop-shadow(0_0_20px_rgba(234,179,8,0.45))]"
+                            aria-hidden
+                          />
+                        </span>
+                      ) : null}
+                    </div>
                     <CardDescription className="text-xs">
                       {formatWhen(c.createdDate)}
                     </CardDescription>
@@ -302,7 +364,10 @@ export function TriageDashboard() {
           <ul className="flex flex-col gap-3">
             {(tickets?.items ?? []).map((t) => (
               <li key={t.id}>
-                <Card size="sm" className="py-3">
+                <Card
+                  size="sm"
+                  className={cn("py-3", priorityCardAccentClass(t.priority))}
+                >
                   <CardHeader className="px-3 pb-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <CardTitle className="text-sm">{t.title}</CardTitle>
@@ -311,7 +376,12 @@ export function TriageDashboard() {
                           <Badge variant="secondary">{t.category}</Badge>
                         ) : null}
                         {t.priority ? (
-                          <Badge variant="outline">{t.priority}</Badge>
+                          <Badge
+                            variant="outline"
+                            className={priorityBadgeClass(t.priority)}
+                          >
+                            {formatPriorityLabel(t.priority)}
+                          </Badge>
                         ) : null}
                       </div>
                     </div>

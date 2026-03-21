@@ -24,6 +24,8 @@ export type UiComment = {
   id: string;
   text: string;
   createdDate: string;
+  /** True when triage created a ticket for this comment (backend: isTicketCreated). */
+  ticketCreated: boolean;
 };
 
 export type UiTicket = {
@@ -73,6 +75,14 @@ function pickStr(o: Record<string, unknown>, keys: string[]): string {
     if (t) return t;
   }
   return "";
+}
+
+function asTruthyFlag(v: unknown): boolean {
+  if (v === true) return true;
+  if (v === false || v === null || v === undefined) return false;
+  if (typeof v === "string") return v.toLowerCase() === "true" || v === "1";
+  if (typeof v === "number") return v === 1;
+  return false;
 }
 
 function parseSpringMeta(data: unknown, rowCount: number): SpringPageMetadata {
@@ -127,7 +137,11 @@ function normalizeComment(raw: unknown, index: number): UiComment | null {
     asText(o.createdDate) ??
     asText(o.createdAt) ??
     new Date().toISOString();
-  return { id, text, createdDate };
+  const ticketCreated =
+    asTruthyFlag(o.isTicketCreated) ||
+    asTruthyFlag(o.ticketCreated) ||
+    asTruthyFlag(o.is_ticket_created);
+  return { id, text, createdDate, ticketCreated };
 }
 
 function normalizeTicket(raw: unknown, index: number): UiTicket | null {
