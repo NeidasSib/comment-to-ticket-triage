@@ -40,15 +40,6 @@ cd backend/triage-service
 
 HTML report is generated at `build/reports/tests/test/index.html`.
 
-### Run the tests
-
-```bash
-cd backend/triage-service
-./gradlew test
-```
-
-HTML report is generated at `build/reports/tests/test/index.html`.
-
 ### Run the frontend
 
 ```bash
