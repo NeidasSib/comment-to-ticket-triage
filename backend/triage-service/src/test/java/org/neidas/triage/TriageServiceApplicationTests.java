@@ -3,7 +3,7 @@ package org.neidas.triage;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
-@SpringBootTest
+@SpringBootTest(properties = "HF_API_KEY=test-key")
 class TriageServiceApplicationTests {
 
     @Test

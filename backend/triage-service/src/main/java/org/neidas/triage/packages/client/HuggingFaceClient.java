@@ -2,6 +2,7 @@ package org.neidas.triage.packages.client;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +22,7 @@ public class HuggingFaceClient {
     private static final String MODEL_URL = "https://router.huggingface.co/v1/chat/completions";
 
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate = createRestTemplate();
 
     public String query(String prompt) {
         HttpHeaders headers = new HttpHeaders();
@@ -36,9 +37,6 @@ public class HuggingFaceClient {
         try {
             ResponseEntity<Map> response = restTemplate.exchange(MODEL_URL, HttpMethod.POST, request, Map.class);
 
-            //Remove later
-            System.out.println("HuggingFace raw response: " + response.getBody());
-
             Map<String, Object> result = response.getBody();
             if (result != null) {
                 List<Map<String, Object>> choices = (List<Map<String, Object>>) result.get("choices");
@@ -52,5 +50,12 @@ public class HuggingFaceClient {
         }
 
         return null;
+    }
+
+    private static RestTemplate createRestTemplate() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(5_000);
+        factory.setReadTimeout(30_000);
+        return new RestTemplate(factory);
     }
 }

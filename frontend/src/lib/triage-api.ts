@@ -20,12 +20,13 @@ export type SpringPageMetadata = {
 
 export type PagedResult<T> = { items: T[]; page: SpringPageMetadata };
 
+export type TriageStatus = "PENDING" | "TICKET_CREATED" | "NO_TICKET" | "FAILED";
+
 export type UiComment = {
   id: string;
   text: string;
   createdDate: string;
-  /** True when triage created a ticket for this comment (backend: isTicketCreated). */
-  ticketCreated: boolean;
+  triageStatus: TriageStatus;
 };
 
 export type UiTicket = {
@@ -77,12 +78,14 @@ function pickStr(o: Record<string, unknown>, keys: string[]): string {
   return "";
 }
 
-function asTruthyFlag(v: unknown): boolean {
-  if (v === true) return true;
-  if (v === false || v === null || v === undefined) return false;
-  if (typeof v === "string") return v.toLowerCase() === "true" || v === "1";
-  if (typeof v === "number") return v === 1;
-  return false;
+function normalizeTriageStatus(v: unknown): TriageStatus {
+  if (typeof v !== "string") return "PENDING";
+  switch (v.toUpperCase()) {
+    case "TICKET_CREATED": return "TICKET_CREATED";
+    case "NO_TICKET":      return "NO_TICKET";
+    case "FAILED":         return "FAILED";
+    default:               return "PENDING";
+  }
 }
 
 function parseSpringMeta(data: unknown, rowCount: number): SpringPageMetadata {
@@ -137,11 +140,10 @@ function normalizeComment(raw: unknown, index: number): UiComment | null {
     asText(o.createdDate) ??
     asText(o.createdAt) ??
     new Date().toISOString();
-  const ticketCreated =
-    asTruthyFlag(o.isTicketCreated) ||
-    asTruthyFlag(o.ticketCreated) ||
-    asTruthyFlag(o.is_ticket_created);
-  return { id, text, createdDate, ticketCreated };
+  const triageStatus = normalizeTriageStatus(
+    o.triageStatus ?? o.triage_status,
+  );
+  return { id, text, createdDate, triageStatus };
 }
 
 function normalizeTicket(raw: unknown, index: number): UiTicket | null {
