@@ -55,10 +55,9 @@ public class TriageService {
         //Remove later
         System.out.println("Triage result: " + triageResult);
 
-        if (triageResult == null || !triageResult.toUpperCase().contains("TICKET") || triageResult.toUpperCase().contains("NO_TICKET")) {
+        if (!isTicketNeeded(triageResult)) {
             return null;
-        }
-        ;
+        };
 
         String detailPrompt = """
                 You are a support ticket generation assistant.
@@ -117,6 +116,12 @@ public class TriageService {
         if (ticket.getSummary() == null) ticket.setSummary(detailResult.trim());
 
         return ticketRepository.save(ticket);
+    }
+
+    private boolean isTicketNeeded(String triageResult){
+        if(triageResult == null) return false;
+        String normalisedTriageResult = triageResult.toUpperCase();
+        return normalisedTriageResult.contains("TICKET") && !normalisedTriageResult.contains("NO_TICKET");
     }
 
     private String extractValue(String line, String prefix) {
