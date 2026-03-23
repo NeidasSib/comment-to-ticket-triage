@@ -31,6 +31,24 @@ docker build -f docker/Dockerfile -t triage-service .
 docker run --rm -p 8080:8080 -e HF_API_KEY=your_token_here triage-service
 ```
 
+### Run the tests
+
+```bash
+cd backend/triage-service
+./gradlew test
+```
+
+HTML report is generated at `build/reports/tests/test/index.html`.
+
+### Run the tests
+
+```bash
+cd backend/triage-service
+./gradlew test
+```
+
+HTML report is generated at `build/reports/tests/test/index.html`.
+
 ### Run the frontend
 
 ```bash
