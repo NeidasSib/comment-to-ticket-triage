@@ -6,7 +6,7 @@ import lombok.Data;
 import org.neidas.triage.packages.model.Category;
 import org.neidas.triage.packages.model.Priority;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 
 @Data
 @AllArgsConstructor
@@ -18,5 +18,5 @@ public class TicketResponse {
     private String summary;
 
     private Long commentId;
-    private LocalDateTime createdAt =  LocalDateTime.now();
+    private OffsetDateTime createdAt;
 }
