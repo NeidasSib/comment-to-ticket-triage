@@ -36,9 +36,6 @@ public class HuggingFaceClient {
         try {
             ResponseEntity<Map> response = restTemplate.exchange(MODEL_URL, HttpMethod.POST, request, Map.class);
 
-            //Remove later
-            System.out.println("HuggingFace raw response: " + response.getBody());
-
             Map<String, Object> result = response.getBody();
             if (result != null) {
                 List<Map<String, Object>> choices = (List<Map<String, Object>>) result.get("choices");

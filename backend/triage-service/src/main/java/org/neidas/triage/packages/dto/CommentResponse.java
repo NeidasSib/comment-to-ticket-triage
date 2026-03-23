@@ -2,6 +2,7 @@ package org.neidas.triage.packages.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import org.neidas.triage.packages.model.TriageStatus;
 
 import java.time.LocalDateTime;
 
@@ -12,5 +13,5 @@ public class CommentResponse {
     private Long id;
     private String text;
     private LocalDateTime createdDate;
-    private Boolean isTicketCreated;
+    private TriageStatus triageStatus;
 }

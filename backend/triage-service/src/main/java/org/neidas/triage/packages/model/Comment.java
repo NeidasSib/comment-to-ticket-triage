@@ -21,5 +21,5 @@ public class Comment {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String text;
     private LocalDateTime createdAt = LocalDateTime.now();
-    private Boolean isTicketCreated = false;
+    private TriageStatus triageStatus = TriageStatus.PENDING;
 }

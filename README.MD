@@ -1,96 +1,128 @@
-# Comment → ticket triage
+# Comment to Ticket Triage
 
-REST API for incoming comments. Each POST runs two Hugging Face calls: first pass decides ticket vs no ticket; if it’s a ticket, a second pass fills title, category, priority, and summary. Lists land in H2 (in-memory). There’s also a small Next.js UI under `frontend/` if you want buttons instead of curl.
+A Spring Boot REST API that takes user comments and uses AI to decide if they should become support tickets. If yes, it generates a title, category, priority, and summary automatically. Triage runs asynchronously — comments respond immediately and update their status in the background.
 
-Stack: Java 25, Spring Boot 4.0.4, Gradle, H2. The model is set in `application.properties` (`meta-llama/Llama-3.1-8B-Instruct:fastest` by default).
+**Stack:** Java 25 · Spring Boot 4.0.4 · Gradle · H2 (in-memory) · Hugging Face Inference API · Next.js 16
 
-## Prerequisites
+---
 
-JDK 25 (Gradle uses the toolchain in `build.gradle`). A Hugging Face token with Inference access. Nothing else unless you’re touching the UI—then Node for `frontend/`.
+## Getting Started
 
-## Run the API
+### Requirements
+
+- JDK 25
+- A [Hugging Face](https://huggingface.co/settings/tokens) API token
+- Node.js (only if running the frontend)
+
+### Run the API locally
 
 ```bash
 cd backend/triage-service
-export HF_API_KEY=hf_your_token_here
+export HF_API_KEY=your_token_here   # Windows: set HF_API_KEY=your_token_here
 ./gradlew bootRun
 ```
 
-Default port is 8080. On Windows use `gradlew.bat` instead of `./gradlew`.
+API is available at `http://localhost:8080`.
 
-Docker (image build from repo root):
+### Run with Docker
 
 ```bash
-docker build -f docker/Dockerfile -t triage-service:local .
-docker run --rm -p 8080:8080 -e HF_API_KEY=hf_your_token_here triage-service:local
+docker build -f docker/Dockerfile -t triage-service .
+docker run --rm -p 8080:8080 -e HF_API_KEY=your_token_here triage-service
 ```
 
-## API
-
-All list endpoints use Spring Data pagination: `page` (0-based), `size`, `sort` (e.g. `createdAt,desc`). Defaults apply if you omit query params.
-
-### `POST /comments`
-
-Body is JSON with a `text` field. Empty text returns 400.
+### Run the frontend
 
 ```bash
-curl -s -X POST http://localhost:8080/comments \
+cd frontend
+cp .env.example .env.local   # edit if your API is not on localhost:8080
+npm install
+npm run dev
+```
+
+UI is available at `http://localhost:3000`.
+
+**Frontend environment variables** (see `frontend/.env.example`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `BACKEND_URL` | `http://localhost:8080` | Server-side proxy target for Next.js rewrites |
+| `NEXT_PUBLIC_API_URL` | *(unset)* | If set, the browser calls this URL directly instead of the proxy |
+
+Leave `NEXT_PUBLIC_API_URL` unset when both frontend and API are co-deployed (e.g. Vercel + Railway) — the Next.js rewrite via `BACKEND_URL` avoids CORS.
+
+---
+
+## API Endpoints
+
+### POST `/comments`
+Submit a comment. Triage runs in the background — the response returns immediately with `triageStatus: "PENDING"`.
+
+```bash
+curl -X POST http://localhost:8080/comments \
   -H "Content-Type: application/json" \
-  -d '{"text":"The checkout page throws a 500 after I enter my card."}'
+  -d '{"text": "The app crashes after login."}'
 ```
-
-Example response (shape is stable; IDs and timestamps depend on your run):
 
 ```json
 {
   "id": 1,
-  "text": "The checkout page throws a 500 after I enter my card.",
+  "text": "The app crashes after login.",
   "createdDate": "2026-03-21T22:12:03.123456",
-  "isTicketCreated": true
+  "triageStatus": "PENDING"
 }
 ```
 
-If triage says it’s not a ticket, you still get the saved comment; `isTicketCreated` is `false` and no ticket row is created.
+Poll `GET /comments` to see the status update. Terminal statuses are `TICKET_CREATED`, `NO_TICKET`, and `FAILED`.
 
-### `GET /comments`
+---
+
+### GET `/comments`
+Returns a paginated list of all comments.
 
 ```bash
-curl -s "http://localhost:8080/comments?page=0&size=10&sort=createdAt,desc"
+curl "http://localhost:8080/comments?page=0&size=10&sort=createdAt,desc"
 ```
-
-Example (truncated page wrapper—your `pageable` block will have more fields):
 
 ```json
 {
   "content": [
     {
       "id": 1,
-      "text": "The checkout page throws a 500 after I enter my card.",
-      "createdDate": "2026-03-20T22:15:03.123456",
-      "isTicketCreated": true
+      "text": "The app crashes after login.",
+      "createdDate": "2026-03-21T22:12:03.123456",
+      "triageStatus": "TICKET_CREATED"
     }
   ],
   "page": { "size": 10, "number": 0, "totalElements": 1, "totalPages": 1 }
 }
 ```
 
-### `GET /tickets`
+| `triageStatus` | Meaning |
+|----------------|---------|
+| `PENDING` | Triage not yet started |
+| `TICKET_CREATED` | AI decided this needs a ticket; see `/tickets` |
+| `NO_TICKET` | AI decided no ticket is needed |
+| `FAILED` | Triage call failed (HF error or timeout) |
+
+---
+
+### GET `/tickets`
+Returns a paginated list of generated tickets.
 
 ```bash
-curl -s "http://localhost:8080/tickets?page=0&size=10&sort=createdAt,desc"
+curl "http://localhost:8080/tickets?page=0&size=10&sort=createdAt,desc"
 ```
-
-Example page entry:
 
 ```json
 {
   "content": [
     {
       "id": 1,
-      "title": "Checkout returns HTTP 500 after card entry",
+      "title": "App crashes after login",
       "category": "BUG",
       "priority": "HIGH",
-      "summary": "User reports server error during payment step after submitting card details.",
+      "summary": "User reports application crash immediately after logging in.",
       "commentId": 1,
       "createdAt": "2026-03-21T22:15:08.456789"
     }
@@ -99,45 +131,61 @@ Example page entry:
 }
 ```
 
-Categories map to `BUG`, `FEATURE`, `BILLING`, `ACCOUNT`, `OTHER`. Priorities are `LOW`, `MEDIUM`, `HIGH`.
+| Field | Values |
+|-------|--------|
+| `category` | `BUG` · `FEATURE` · `BILLING` · `ACCOUNT` · `OTHER` |
+| `priority` | `LOW` · `MEDIUM` · `HIGH` |
 
-### `GET /tickets/{id}`
+---
+
+### GET `/tickets/{id}`
+Returns a single ticket by ID. Returns `404` if not found.
 
 ```bash
-curl -s http://localhost:8080/tickets/1
+curl http://localhost:8080/tickets/1
 ```
-
-Example:
 
 ```json
 {
-    "id": 1,
-    "title": "Application Error After Update",
-    "category": "BUG",
-    "priority": "HIGH",
-    "summary": "The application is stuttering after recent update.",
-    "commentId": 2,
-    "createdAt": "2026-03-21T14:57:35.931828"
+  "id": 1,
+  "title": "App crashes after login",
+  "category": "BUG",
+  "priority": "HIGH",
+  "summary": "User reports application crash immediately after logging in.",
+  "commentId": 1,
+  "createdAt": "2026-03-21T22:15:08.456789"
 }
 ```
 
-Unknown id → 404.
+---
 
-## H2 console
+## H2 Database Console
 
-With the default config it’s on at `http://localhost:8080/h2-console`. Use JDBC URL `jdbc:h2:mem:triage-service`, user `sa`, leave password blank. Open it when you want to inspect rows directly.
+Available at `http://localhost:8080/h2-console` when running locally.
 
-## Why Llama and not flan-t5-base?
+| Field | Value |
+|-------|-------|
+| JDBC URL | `jdbc:h2:mem:triage-service` |
+| Username | `sa` |
+| Password | *(leave blank)* |
 
-The client hits Hugging Face’s **chat completions** route (`/v1/chat/completions` on the router). That API expects a chat-style payload (messages with roles). Flan-T5 isn’t wired through that path the same way. Llama 3.1 Instruct is. Swapping models is mostly a config change if the replacement speaks the same chat schema.
+---
 
-## Layout
+## Project Structure
 
 ```
 .
-├── backend/triage-service/    # Spring Boot app
-├── docker/                    # Dockerfile
-├── frontend/                  # Next.js dashboard
+├── backend/triage-service/   # Spring Boot API
+├── docker/                   # Dockerfile (build context = repo root)
+├── frontend/                 # Next.js UI
+│   └── .env.example          # frontend environment template
 ├── .dockerignore
-└── README.md
+└── README.MD
 ```
+
+---
+
+## Notes
+
+**Why Llama 3.1 and not flan-t5-base?**  
+The Hugging Face router uses a chat completions API (`/v1/chat/completions`) that expects messages with roles. Llama 3.1 Instruct supports this format; flan-t5 doesn't. Swapping to another model is a single config change in `application.properties` as long as the model is chat-compatible.

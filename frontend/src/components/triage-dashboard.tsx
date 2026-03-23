@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AlertCircle,
   ChevronLeft,
   ChevronRight,
+  Loader2,
   MessageSquarePlus,
   RefreshCw,
   Sparkles,
   Ticket,
+  XCircle,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -32,10 +34,15 @@ import {
   formatApiErrorMessage,
   submitComment,
   type PagedResult,
+  type TriageStatus,
   type UiComment,
   type UiTicket,
 } from "@/lib/triage-api";
 import { cn } from "@/lib/utils";
+
+const MAX_COMMENT_LENGTH = 500;
+const POLL_INTERVAL_MS = 3_000;
+const POLL_MAX_ATTEMPTS = 10;
 
 function formatWhen(iso: string): string {
   const d = new Date(iso);
@@ -84,6 +91,43 @@ function priorityCardAccentClass(priority: string | undefined): string {
     default:
       return "";
   }
+}
+
+function hasPendingTriage(items: UiComment[]): boolean {
+  return items.some((c) => c.triageStatus === "PENDING");
+}
+
+function TriageStatusIndicator({ status }: { status: TriageStatus }) {
+  if (status === "TICKET_CREATED") {
+    return (
+      <span
+        className="inline-flex shrink-0 items-center justify-center rounded-full p-0.5"
+        aria-label="Ticket generated from this comment"
+      >
+        <Sparkles
+          className="size-4 text-amber-400 [filter:drop-shadow(0_0_4px_rgb(250,204,21))_drop-shadow(0_0_12px_rgba(250,204,21,0.9))_drop-shadow(0_0_20px_rgba(234,179,8,0.45))]"
+          aria-hidden
+        />
+      </span>
+    );
+  }
+  if (status === "PENDING") {
+    return (
+      <span className="text-muted-foreground inline-flex shrink-0 items-center gap-1 text-xs">
+        <Loader2 className="size-3 animate-spin" aria-hidden />
+        Triaging…
+      </span>
+    );
+  }
+  if (status === "FAILED") {
+    return (
+      <span className="text-destructive inline-flex shrink-0 items-center gap-1 text-xs">
+        <XCircle className="size-3" aria-hidden />
+        Triage failed
+      </span>
+    );
+  }
+  return null;
 }
 
 function apiMessage(e: unknown, fallback: string): string {
@@ -150,6 +194,8 @@ export function TriageDashboard() {
   const [actionError, setActionError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [refreshIconKey, setRefreshIconKey] = useState(0);
+  const [pollingActive, setPollingActive] = useState(false);
+  const pollAttemptsRef = useRef(0);
 
   const loadComments = useCallback(async (page: number) => {
     setLoadingComments(true);
@@ -188,6 +234,35 @@ export function TriageDashboard() {
     void refreshFromStart();
   }, [refreshFromStart]);
 
+  useEffect(() => {
+    if (!pollingActive) return;
+    pollAttemptsRef.current = 0;
+
+    const id = setInterval(() => {
+      pollAttemptsRef.current += 1;
+      void (async () => {
+        try {
+          const [commentsResult, ticketsResult] = await Promise.all([
+            fetchCommentsPage(0, DEFAULT_PAGE_SIZE),
+            fetchTicketsPage(0, DEFAULT_PAGE_SIZE),
+          ]);
+          setComments(commentsResult);
+          setTickets(ticketsResult);
+          if (
+            !hasPendingTriage(commentsResult.items) ||
+            pollAttemptsRef.current >= POLL_MAX_ATTEMPTS
+          ) {
+            setPollingActive(false);
+          }
+        } catch {
+          setPollingActive(false);
+        }
+      })();
+    }, POLL_INTERVAL_MS);
+
+    return () => clearInterval(id);
+  }, [pollingActive]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = body.trim();
@@ -198,6 +273,7 @@ export function TriageDashboard() {
       await submitComment({ body: trimmed });
       setBody("");
       await refreshFromStart();
+      setPollingActive(true);
     } catch (err) {
       setActionError(apiMessage(err, "Submit failed."));
     } finally {
@@ -239,7 +315,23 @@ export function TriageDashboard() {
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 rows={4}
+                maxLength={MAX_COMMENT_LENGTH}
+                aria-describedby="body-counter"
               />
+              <p
+                id="body-counter"
+                className={cn(
+                  "text-right text-xs tabular-nums",
+                  body.length >= MAX_COMMENT_LENGTH
+                    ? "text-destructive font-medium"
+                    : body.length >= MAX_COMMENT_LENGTH * 0.8
+                      ? "text-amber-600 dark:text-amber-400"
+                      : "text-muted-foreground",
+                )}
+                aria-live="polite"
+              >
+                {body.length} / {MAX_COMMENT_LENGTH}
+              </p>
             </div>
             {actionError ? (
               <p className="text-destructive flex items-start gap-2 text-sm">
@@ -247,7 +339,14 @@ export function TriageDashboard() {
                 {actionError}
               </p>
             ) : null}
-            <Button type="submit" disabled={submitting || !body.trim()}>
+            <Button
+              type="submit"
+              disabled={
+                submitting ||
+                !body.trim() ||
+                body.length > MAX_COMMENT_LENGTH
+              }
+            >
               {submitting ? "Submitting…" : "Submit"}
             </Button>
           </form>
@@ -315,18 +414,7 @@ export function TriageDashboard() {
                   <CardHeader className="px-3 pb-0">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <CardTitle className="text-sm">Comment #{c.id}</CardTitle>
-                      {c.ticketCreated ? (
-                        <span
-                          className="inline-flex shrink-0 items-center justify-center rounded-full p-0.5"
-                          title="Ticket generated from this comment"
-                          aria-label="Ticket generated from this comment"
-                        >
-                          <Sparkles
-                            className="size-4 text-amber-400 [filter:drop-shadow(0_0_4px_rgb(250,204,21))_drop-shadow(0_0_12px_rgba(250,204,21,0.9))_drop-shadow(0_0_20px_rgba(234,179,8,0.45))]"
-                            aria-hidden
-                          />
-                        </span>
-                      ) : null}
+                      <TriageStatusIndicator status={c.triageStatus} />
                     </div>
                     <CardDescription className="text-xs">
                       {formatWhen(c.createdDate)}
