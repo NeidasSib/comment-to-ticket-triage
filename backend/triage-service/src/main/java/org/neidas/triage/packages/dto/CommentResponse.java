@@ -4,7 +4,6 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import org.neidas.triage.packages.model.TriageStatus;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 @Data

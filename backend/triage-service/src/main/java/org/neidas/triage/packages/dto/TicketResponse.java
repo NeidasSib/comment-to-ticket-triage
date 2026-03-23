@@ -6,7 +6,6 @@ import lombok.Data;
 import org.neidas.triage.packages.model.Category;
 import org.neidas.triage.packages.model.Priority;
 
-import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 
 @Data
