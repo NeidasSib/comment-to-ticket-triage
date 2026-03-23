@@ -6,6 +6,8 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "comments")
@@ -20,6 +22,6 @@ public class Comment {
 
     @Column(nullable = false, columnDefinition = "TEXT")
     private String text;
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private OffsetDateTime createdAt = OffsetDateTime.now(ZoneOffset.UTC);
     private TriageStatus triageStatus = TriageStatus.PENDING;
 }

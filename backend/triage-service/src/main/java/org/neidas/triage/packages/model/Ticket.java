@@ -7,6 +7,8 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 
 @Entity
 @Table(name = "tickets")
@@ -31,5 +33,5 @@ public class Ticket {
     private String summary;
 
     private Long commentId;
-    private LocalDateTime createdAt =  LocalDateTime.now();
+    private OffsetDateTime createdAt =  OffsetDateTime.now(ZoneOffset.UTC);
 }
