@@ -177,18 +177,6 @@ curl http://localhost:8080/tickets/1
 
 ---
 
-## H2 Database Console
-
-Available at `http://localhost:8080/h2-console` when running locally.
-
-| Field | Value |
-|-------|-------|
-| JDBC URL | `jdbc:h2:mem:triage-service` |
-| Username | `sa` |
-| Password | *(leave blank)* |
-
----
-
 ## Project Structure
 
 ```
